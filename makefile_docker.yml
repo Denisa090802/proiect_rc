@@ -1,0 +1,31 @@
+version: "3.9"
+services:
+  external_client:
+    container_name: external_client
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+  client1: 
+    container_name: client1
+    # restart: always
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8452:8452
+  client2: 
+    container_name: client2
+    # restart: always
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    # ports:
+      # - 8452:8452
+  client3: 
+    container_name: client3
+    # restart: always
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    # ports:
+      # - 8452:8452
