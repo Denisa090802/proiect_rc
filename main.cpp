@@ -17,6 +17,7 @@
 #include <iostream>
 #include <set>
 #include <queue>
+#include <sys/stat.h>
 using namespace std;
 
 set<string> connected_peers;
@@ -38,63 +39,57 @@ void get_clients()
   }
 }
 
-int sockp[2], child; 
+int child;
 char msg[1024];
 
 int main()
 {
+  mkfifo("broadcast.buffer", 0666);
   setup_db();
-
-  if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockp) < 0) 
-  { 
-    perror("Err... socketpair"); 
-    exit(1); 
-  }
-
   int pid = fork();
   if (pid != 0)
   {
     if (fork())
     {
-      while (true)
-      {
-        get_clients();
-        sleep(10);
-      }
+      cout << "IP adress: " << getIpAddress() << endl;
+      listen_server(connected_peers);
     }
     else
     {
-        close(sockp[0]); 
-        while(true)
+      int fd1 = open("broadcast.buffer",O_RDONLY);
+      while (true)
+      {
+        if (read(fd1, msg, 1024) < 0)
         {
-            if (read(sockp[1], msg, 1024) < 0) { printf("Error reading from stocketpair\n"); }
-            else {
-              fflush (stdout);
-              char msg2[1024];
-              strcpy(msg2, msg);
-
-              char *p = strtok(msg2, "|");
-              strcpy(msg, p);
-              char ip[50];
-              p = strtok(NULL, "|");
-              strcpy(ip, p);
-
-              printf("{%s} -> {%s}\n", ip, msg);
-              fflush (stdout);
-
-              sleep(1);
-
-              broadcast_insert(ip, msg);
-              // if (write(sockp[1], "MNAAAAA", sizeof("MNAAAAA")) < 0) perror("[parinte]Err...write"); 
-            } 
-            sleep(1);
+          printf("Error reading from stocketpair\n");
         }
-        close(sockp[1]); 
+        else
+        {
+          fflush(stdout);
+          char msg2[1024];
+          strcpy(msg2, msg);
+
+          char *p = strtok(msg2, "|");
+          strcpy(msg, p);
+          char ip[50];
+          p = strtok(NULL, "|");
+          strcpy(ip, p);
+
+          printf("{%s} -> {%s}\n", ip, msg);
+          fflush(stdout);
+
+          broadcast_insert(ip, msg);
+          // if (write(pipes[1], "MNAAAAA", sizeof("MNAAAAA")) < 0) perror("[parinte]Err...write");
+        }
+      }
     }
   }
   else
   {
-    cout << "IP adress: " << getIpAddress() << endl;
-    listen_server(connected_peers, sockp);
+    while (true)
+    {
+      get_clients();
+      sleep(5);
+    }
   }
 }

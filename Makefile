@@ -5,14 +5,15 @@ export COMPOSE_FILE=makefile_docker.yml
 
 .PHONY: up down stop prune ps shell logs tests
 
-default: up
+default: start
 
 help : Makefile
 	@sed -n 's/^##//p' $<
 
 up:
+	@docker-compose stop
 	@echo "Starting up containers for for $(PROJECT_NAME) using $(COMPOSE_FILE)..."
-	docker-compose up --build -d --remove-orphans
+	docker-compose up --build --remove-orphans
 
 build:
 	@echo "Building with no cache image for for $(PROJECT_NAME)..."

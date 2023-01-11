@@ -64,7 +64,6 @@ bool check_if_client_is_active(std::string ip, std::set<std::string> &connected_
       strcpy(msg_buff, compress_peers(connected_peers).c_str());
       fflush(stdout);
       write(sock, msg_buff, 100);
-      printf("Connected to %s\n", ip.c_str());
       fflush(stdout);
       close(sock);
       return true;
@@ -84,7 +83,7 @@ std::string getIpAddress()
   getifaddrs(&ifAddrStruct);
 
   for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next)
-  { // intereaza toate adresele din ifAddsStruct cu ajutorul var ifa
+  { // itereaza toate adresele din ifAddsStruct cu ajutorul var ifa
     if (ifa->ifa_addr->sa_family == AF_INET)
     {                                                                // verific daca adresa este de tip TCP
       tmpAddrPtr = &((struct sockaddr_in *)ifa->ifa_addr)->sin_addr; // iau adresa ip
@@ -152,14 +151,16 @@ int broadcast_insert(char ip[50], char msg[100])
     return errno;
   }
   /* afisam mesajul primit */
-  printf("[client]Mesajul primit este: %s\n", msg);
+  printf("[peer-%s]Mesajul primit este: %s\n",ip, msg);
 
   /* inchidem conexiunea, am terminat */
   close(sd);
 }
 
-int listen_server(std::set<std::string> &connected_peers, int *sockp)
+int listen_server(std::set<std::string> &connected_peers)
 {
+  int fd1 = open("broadcast.buffer",O_WRONLY);
+
   struct sockaddr_in server; // structura folosita de server
   struct sockaddr_in from;
   char msg[100];           // mesajul primit de la client
@@ -233,7 +234,7 @@ int listen_server(std::set<std::string> &connected_peers, int *sockp)
 
     // printf ("[server]Mesajul a fost receptionat...%s\n", msg);
 
-    if (strncmp(msg, "peers:",  6) == 0)
+    if (strncmp(msg, "peers:", 6) == 0)
     {
       char temp[1000];
       strcpy(temp, msg + 6);
@@ -243,14 +244,20 @@ int listen_server(std::set<std::string> &connected_peers, int *sockp)
         if (strlen(ip) > 0)
         {
           std::string str = ip;
+          printf("CONNECTED WITH: %s\n", str.c_str());
+          fflush(stdout);
           connected_peers.insert(str);
         }
         ip = strtok(NULL, ",");
       }
     }
-    
-    if (strncmp(msg, "insert:", 7) == 0)
+    else if (strncmp(msg, "insert:", 7) == 0 || strncmp(msg, "#insert:", 8) == 0)
     {
+      bool disable_broadcast = msg[0] == '#';
+      if (disable_broadcast)
+      {
+        strcpy(msg, msg + 1);
+      }
       printf("INSERT MODE > \n");
       char nume[100], address[100];
       int id, year, month, day;
@@ -281,7 +288,7 @@ int listen_server(std::set<std::string> &connected_peers, int *sockp)
         {
           strcpy(address, p);
         }
-       
+
         p = strtok(NULL, ",");
         contor++;
       }
@@ -295,26 +302,33 @@ int listen_server(std::set<std::string> &connected_peers, int *sockp)
       }
       else
       {
-        insert_db(id, nume, year, month, day, address); 
-        close(sockp[1]);
-        for (auto itr = connected_peers.begin(); itr != connected_peers.end(); itr++)
+        insert_db(id, nume, year, month, day, address);
+        if (disable_broadcast == false)
         {
-          char msg2[1024];
-          strcpy(msg2, msg);
-          strcat(msg2, "|");
-          strcat(msg2, (*itr).c_str());
-           
-          if (write(sockp[0], msg2, sizeof(msg2)) < 0) perror("[copil]Err...write"); 
-          // if (read(sockp[0], msg, 1024) < 0) perror("[copil]Err..read"); 
-          
+          for (auto itr = connected_peers.begin(); itr != connected_peers.end(); itr++)
+          {
+            if((*itr) == getIpAddress()) continue;
+            char msg2[1024];
+            strcpy(msg2, "#");
+            strcat(msg2, msg);
+            strcat(msg2, "|");
+            strcat(msg2, (*itr).c_str());
+
+            if (write(fd1, msg2, sizeof(msg2)) < 0)
+              perror("[copil]Err...write");
+          }
         }
-        close(sockp[0]); 
 
         strcpy(msg, "Elementul a fost inserat.");
       }
     }
-    if (strncmp(msg, "update:", 7) == 0)
+    else if (strncmp(msg, "update:", 7) == 0 || strncmp(msg, "#update:", 7) == 0)
     {
+      bool disable_broadcast = msg[0] == '#';
+      if (disable_broadcast)
+      {
+        strcpy(msg, msg + 1);
+      }
       printf("update MODE > \n");
       char nume[100], address[100];
       int id, year, month, day;
@@ -345,7 +359,7 @@ int listen_server(std::set<std::string> &connected_peers, int *sockp)
         {
           strcpy(address, p);
         }
-       
+
         p = strtok(NULL, ",");
         contor++;
       }
@@ -359,66 +373,90 @@ int listen_server(std::set<std::string> &connected_peers, int *sockp)
       }
       else
       {
-        update_db(id, nume, year, month, day, address); 
-        close(sockp[1]);
-        for (auto itr = connected_peers.begin(); itr != connected_peers.end(); itr++)
+        printf("'%s' = '%s'\n", msg + 7, read_from_db(id).c_str());
+        if (strcmp(msg + 7, read_from_db(id).c_str()) == 0)
         {
-          char msg2[1024];
-          strcpy(msg2, msg);
-          strcat(msg2, "|");
-          strcat(msg2, (*itr).c_str());
-           
-          if (write(sockp[0], msg2, sizeof(msg2)) < 0) perror("[copil]Err...write"); 
-          // if (read(sockp[0], msg, 1024) < 0) perror("[copil]Err..read");
+          strcpy(msg, "Elementul era deja actualizat.");
         }
-        close(sockp[0]); 
+        else
+        {
+          update_db(id, nume, year, month, day, address);
+          if (disable_broadcast == false)
+          {
+            for (auto itr = connected_peers.begin(); itr != connected_peers.end(); itr++)
+            {
+              if((*itr) == getIpAddress()) continue;
+              char msg2[1024];
+              strcpy(msg2, "#");
+              strcat(msg2, msg);
+              strcat(msg2, "|");
+              strcat(msg2, (*itr).c_str());
 
-        strcpy(msg, "Elementul a fost inserat.");
+              if (write(fd1, msg2, sizeof(msg2)) < 0)
+                perror("[copil]Err...write");
+            }
+          }
+
+          strcpy(msg, "Elementul a fost actualizat.");
+        }
       }
     }
-    if (strncmp(msg, "delete:", 7) == 0)
+    else if (strncmp(msg, "delete:", 7) == 0 || strncmp(msg, "#delete:", 7) == 0)
     {
-      int id = atoi(msg+7);
-      delete_from_db(id);
-      close(sockp[1]);
-        for (auto itr = connected_peers.begin(); itr != connected_peers.end(); itr++)
-        {
-          char msg2[1024];
-          strcpy(msg2, msg);
-          strcat(msg2, "|");
-          strcat(msg2, (*itr).c_str());
-           
-          if (write(sockp[0], msg2, sizeof(msg2)) < 0) perror("[copil]Err...write"); 
-          // if (read(sockp[0], msg, 1024) < 0) perror("[copil]Err..read"); 
-          
-        }
-        close(sockp[0]); 
+      bool disable_broadcast = msg[0] == '#';
+      if (disable_broadcast)
+      {
+        strcpy(msg, msg + 1);
+      }
+      int id = atoi(msg + 7);
+      if (check_id_db(id))
+      {
+        delete_from_db(id);
 
-        strcpy(msg, "Elementul a fost sters.");
+        if (disable_broadcast == false)
+        {
+          for (auto itr = connected_peers.begin(); itr != connected_peers.end(); itr++)
+          {
+            if((*itr) == getIpAddress()) continue;
+            char msg2[1024];
+            strcpy(msg2, "#");
+            strcat(msg2, msg);
+            strcat(msg2, "|");
+            strcat(msg2, (*itr).c_str());
+
+            if (write(fd1, msg2, sizeof(msg2)) < 0)
+              perror("[copil]Err...write");
+          }
+        }
+      }
+      strcpy(msg, "Elementul a fost sters.");
     }
-    if (strncmp(msg, "read:",   5) == 0)
+    else if (strncmp(msg, "read:", 5) == 0)
     {
-      int id = atoi(msg+5);
+      int id = atoi(msg + 5);
       strcpy(msg, read_from_db(id).c_str());
     }
-    
-    std::cout << "Received: " << msg << std::endl;
+    else if (strncmp(msg, "read_all:", 9) == 0)
+    {
+      strcpy(msg, read_from_db().c_str());
+    }
+    else
+    {
+      std::cout << "Mesaj nerecunoscut: " << msg << std::endl;
+    }
 
     /*pregatim mesajul de raspuns */
     bzero(msgrasp, 100);
     strcat(msgrasp, msg);
 
     // printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
-    std::cout << "Prepare to send back: " << msgrasp << std::endl;
 
     /* returnam mesajul clientului */
     if (write(client, msgrasp, 100) <= 0)
     {
-      perror("[server]Eroare la catre client.\n");
+      printf("[server]Eroare la catre client. '%s'\n", msgrasp);
       continue; /* continuam sa ascultam */
     }
-    else
-      printf("[server]Mesajul '%s' a fost transmis cu succes.\n", msgrasp);
     /* am terminat cu acest client, inchidem conexiunea */
     close(client);
   } /* while */

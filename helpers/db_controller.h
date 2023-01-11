@@ -6,6 +6,8 @@ using namespace std;
 
 const char db_name[100] = "internal.db";
 
+void insert_db(int id, std::string name, int year, int month, int day, std::string address);
+
 void test_db_connection()
 {
     sqlite3 *db;
@@ -66,6 +68,10 @@ void initialize_database()
     //     sqlite3_free(zErrMsg);
     // }
     sqlite3_close(db);
+
+    insert_db(1,"Spectacol caritabil", 2023,3,7,"Hotel Unirea, Iasi");
+    insert_db(2,"Reuniune de familie", 2023,5,15,"Restaurant Hellen, Bacau");
+    insert_db(3,"Petrecere aniversara", 2023,8,10,"Skin, Iasi");
 }
 
 void insert_db(int id, std::string name, int year, int month, int day, std::string address)
@@ -132,7 +138,7 @@ void update_db(int id, std::string name, int year, int month, int day, std::stri
     }
     else
     {
-        fprintf(stdout, "Successfully inserted\n");
+        fprintf(stdout, "Successfully updated\n");
     }
     sqlite3_close(db);
 }
@@ -165,7 +171,7 @@ void delete_from_db(int id)
     }
     else
     {
-        fprintf(stdout, "Successfully inserted\n");
+        fprintf(stdout, "Successfully deleted\n");
     }
     sqlite3_close(db);
 }
@@ -197,7 +203,42 @@ std::string read_from_db(int id)
     const unsigned char *address = sqlite3_column_text(stmt, 5);
     std::string _name = (char *)name;
     std::string _address = (char*) address;
-    output += ( _name + "," + to_string(day) + "," + to_string(month) + "," + to_string(year) + "," + _address + ";");
+    output += ( to_string(id) + "," + _name + "," + to_string(day) + "," + to_string(month) + "," + to_string(year) + "," + _address + ";");
+  }
+
+  sqlite3_finalize(stmt);
+  sqlite3_close(db);
+  return output;
+}
+
+std::string read_from_db()
+{
+     sqlite3 *db;
+    char *zErrMsg = 0;
+    int rc;
+
+    /* Open database */
+    rc = sqlite3_open(db_name, &db);
+
+    if (rc)
+    {
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+    }
+    
+  sqlite3_stmt *stmt;
+  std::string sql = "SELECT * FROM events;";
+  rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, NULL);
+    std::string output="";
+  while (sqlite3_step(stmt) == SQLITE_ROW) {
+    int id = sqlite3_column_int(stmt, 0);
+    const unsigned char *name = sqlite3_column_text(stmt, 1);
+    int year = sqlite3_column_int(stmt, 2);
+    int month = sqlite3_column_int(stmt, 3);
+    int day = sqlite3_column_int(stmt, 4);
+    const unsigned char *address = sqlite3_column_text(stmt, 5);
+    std::string _name = (char *)name;
+    std::string _address = (char*) address;
+    output += (to_string(id) + ",");
   }
 
   sqlite3_finalize(stmt);
