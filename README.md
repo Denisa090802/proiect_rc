@@ -1,5 +1,5 @@
 
-#Introducere
+# Introducere
 DevSync este o aplicatie care permite sincronizarea mai multor dispozitive, mentinand permanent 
 informatiile actualizate intre acestea. Avand la baza o arhitectura Peer to peer, programul va utiliza o 
 multitudine de functii de propagare a informatiei. Pe langa informatii de sistem, nodurile vor stoca 
