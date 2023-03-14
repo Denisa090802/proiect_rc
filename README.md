@@ -7,14 +7,14 @@ informatia aferenta unei baze de date distribuite care va contine informatii cu 
 evenimente de pe parcursul unui an(data, locatie etc.), avand gradul de redundanta egal cu numarul de 
 noduri active.
 
-#Tehnologii utilizate
+# Tehnologii utilizate
 Tinand cont de importanta transmiterii integrale a informatiei intre dispozitive, aplicatia va folosi 
 protocolul TCP, pentru a ne asigura de facptul ca informatiile se transmit corect. Pentru a descoperi noile 
 noduri active care apar in retea, dar si pentru eliminarea nodurile recent dezactivate, se vor folosi thread uri separate cu scopul de a nu afecta viteza/frecventa sincronizarii datelor. Stocarea datelor se va realiza 
 cu ajutorul unei baze de date locale, de tip SQLite, aflata in fiecare nod al carui informatii vor fi 
 sincronizate.
 
-#Arhitectura aplicatiei
+# Arhitectura aplicatiei
 Folosing principiul P2P, fiecare nod din sistem joaca atat rol de client, cat si de server. Fiecare instanta isi 
 deschide doua procese: unul prin care asteapta request ul pentru procesare si altul prin care realizeaza 
 conexiunea cu celelalte noduri. 
@@ -23,7 +23,7 @@ Un request de citire va returna returnatiile din baza de date locala, in timp de
 inserare/actualizare/stergere va efectua operatia respectiva pe baza de date locala si, ulterior, va fi trimis 
 catre celelalte peer-uri, in cazul in care informatiile nu erau deja actualizate.
 
-#Detalii de implementare
+# Detalii de implementare
 In firul de executie corespunzator conectarii, generam toate adresele IP din subnet-ul curent, apoi le 
 retinem cu ajutorul unei liste (set) pe cele care ofera un raspuns valid request-ului de verificare. Fiecare
 request va avea un timeout de 3 secunde, pentru a nu bloca executia programului, iar in momentul 
@@ -38,7 +38,7 @@ In acest fel putem garanta ca orice informatie a fost sincronizata, deoarece act
 dupa sine o cerere de actualizare in celelalte noduri.
 
 
-#Concluzii 
+# Concluzii 
 Arhitectura creata permite introducerea mai multor peer uri in retea, astfel se suporta un trafic mai mare 
 fara a afecta performanta de citire, dar si asigura persistenta datelor chiar si in cazul in care unul dintre 
 noduri devine inactive, informatia fiind stocata in continuare in celelalte. 
@@ -53,7 +53,7 @@ nodurilor prin aceasta aplicatie, precum si distribuirea acestora pentru a asigu
 tuturor peer-urilor. Prin acest mijloc, putem mari numarul de clienti simultani si de query-uri executate pe 
 sistemul nostru. 
 
-#Bibliografie
+# Bibliografie
 https://www.techopedia.com/definition/454/peer-to-peer-architecture-p2p-architecture
 https://profs.info.uaic.ro/~computernetworks/cursullaboratorul.php
 https://stackoverflow.com/questions/4130147/get-local-ip-address-in-c-linux
